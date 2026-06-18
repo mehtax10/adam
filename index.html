@@ -57,10 +57,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;color:var(--text);background:va
 .sdot.loading{background:#BA7517;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-.mode-banner{padding:8px 24px;font-size:11px;font-weight:600;letter-spacing:1px;display:flex;align-items:center;gap:8px}
-.mode-banner.active-mode{background:#031a12;color:#3bbf90;border-bottom:0.5px solid #0F6E56}
-.mode-banner.date-mode{background:#0c1e35;color:#85C3F7;border-bottom:0.5px solid #185FA5}
-
 .cal-section{
   background:linear-gradient(165deg,#3a4256 0%,#454e66 55%,#3c4458 100%);
   border-bottom:0.5px solid var(--border2);
@@ -91,8 +87,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;color:var(--text);background:va
 .cal-day.other-month{opacity:.25;pointer-events:none}
 .cal-day.selected{background:var(--blue);color:#fff;font-weight:700;border-color:var(--blue);box-shadow:0 0 0 3px rgba(55,138,221,0.3)}
 .cal-day.selected::after{background:#fff}
-.cal-day.today{background:var(--today-ring);color:#0f1117;font-weight:800;border-color:var(--today-ring)}
-.cal-day.today.selected{background:var(--blue);color:#fff;border-color:var(--blue)}
+.cal-day.today{background:var(--today-ring);color:#0f1117;font-weight:800;border-color:var(--today-ring);box-shadow:0 0 0 3px rgba(34,197,94,0.35),0 0 10px rgba(34,197,94,0.5)}
+.cal-day.today.selected{background:var(--blue);color:#fff;border-color:var(--blue);box-shadow:0 0 0 3px rgba(55,138,221,0.3)}
 
 .kpi-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border2)}
 .kpi{padding:18px 8px;text-align:center;position:relative;overflow:hidden}
@@ -230,11 +226,6 @@ tr.warn-row td.left{border-left:3px solid #E24B4A}
   </div>
 </div>
 
-<div class="mode-banner active-mode" id="mode-banner">
-  <i class="ti ti-activity"></i>
-  <span id="mode-text">ACTIVE ORDERS — Shipped orders hidden. Select a date to view shipped.</span>
-</div>
-
 <div class="cal-section">
   <div class="cal-header">
     <span class="cal-label"><i class="ti ti-calendar"></i> FILTER BY DATE</span>
@@ -354,7 +345,7 @@ async function load() {
     if (!json.length) throw new Error("Sheet appears empty");
     allRows = json.map(r => ({
       order:         shortOrderId(r["Shipment ID"]||r["shipment id"]||""),
-      company:       r["Client"]||r["client"]||r["Company"]||"",
+      company:       r["Company"]||r["company"]||"",
       orderName:     r["Ship To Name"]||r["ship to name"]||"",
       po:            r["Cons PO"]||r["cons po"]||r["PO"]||"",
       units:         r["Tot Qty"]||r["tot qty"]||r["Units"]||"–",
@@ -374,7 +365,7 @@ async function load() {
   } catch(e) {
     if (!allRows.length) allRows = [...DEMO];
     setStatus("err", "Demo data · " + e.message);
-    calY = 2024; calM = 5; // June 2024 for demo
+    calY = TODAY.getFullYear(); calM = TODAY.getMonth(); // always show real current month
   }
   icon.classList.remove("spin");
   renderCal();
@@ -571,25 +562,10 @@ function render() {
   document.getElementById("k-total").textContent   = (selDate ? dateFiltered.length : dateFiltered.filter(r=>!isShipped(r)).length + shippedCount);
 
   const kpiShipped = document.getElementById("kpi-shipped");
-  const banner = document.getElementById("mode-banner");
-  const modeText = document.getElementById("mode-text");
-
   if (selDate) {
     kpiShipped.classList.remove("dimmed");
-    banner.className = "mode-banner date-mode";
-    const dateObj = new Date(selDate);
-    const label = isNaN(dateObj) ? selDate : dateObj.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
-    modeText.textContent = `VIEWING ${label.toUpperCase()} — Orders created that day, plus orders shipped that day.`;
   } else {
     kpiShipped.classList.add("dimmed");
-    banner.className = "mode-banner active-mode";
-    const hiddenCount = shippedCount;
-    const dueTomorrowCount = dateFiltered.filter(r => !isShipped(r) && r.daysToCancel === 1).length;
-    let txt = `ACTIVE ORDERS — ${hiddenCount} shipped order${hiddenCount!==1?'s':''} hidden. Select a date to view shipped.`;
-    if (dueTomorrowCount > 0) {
-      txt += ` ⚠ ${dueTomorrowCount} order${dueTomorrowCount!==1?'s':''} cancel in 1 day.`;
-    }
-    modeText.textContent = txt;
   }
 
   const tbody = document.getElementById("tbody");
