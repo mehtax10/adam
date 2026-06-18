@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NFI #510 – Order Status Dashboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #f0f2f5;
+  --surface: #ffffff;
+  --surface2: #f5f6f9;
+  --border: rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.15);
+  --text: #1a1a2e;
+  --muted: #6b7280;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --blue: #378ADD;
+  --amber: #BA7517;
+  --green: #3B6D11;
+  --purple: #534AB7;
+  --teal: #0F6E56;
+  --red: #A32D2D;
+  --today-ring: #22c55e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1b23;
+    --surface2: #22232e;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.14);
+    --text: #e8e8f0;
+    --muted: #8888aa;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;color:var(--text);background:var(--bg);min-height:100vh}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--surface);border-bottom:0.5px solid var(--border2)}
+.brand-block .eyebrow{font-size:10px;letter-spacing:2px;color:var(--muted);font-weight:600}
+.brand-block .title{font-size:18px;font-weight:600;display:flex;align-items:center;gap:10px}
+.chip{font-size:10px;padding:3px 9px;border-radius:6px;background:#E6F1FB;color:#185FA5;font-weight:600;letter-spacing:1px}
+@media (prefers-color-scheme: dark){.chip{background:#0C447C;color:#85B7EB}}
+.refresh-row{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.refresh-btn{background:none;border:0.5px solid var(--border2);border-radius:var(--radius);padding:6px 12px;cursor:pointer;font-size:12px;color:var(--text);display:flex;align-items:center;gap:6px;transition:background .15s}
+.refresh-btn:hover{background:var(--surface2)}
+.outbound-btn{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--radius);background:linear-gradient(135deg,#0c1e35,#185FA5);color:#85C3F7;font-size:12px;font-weight:700;letter-spacing:.5px;text-decoration:none;border:0.5px solid #378ADD;transition:all .18s}
+.outbound-btn:hover{background:linear-gradient(135deg,#185FA5,#378ADD);color:#fff}
+.outbound-btn i{font-size:14px}
+.spin{display:inline-block;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sdot{width:7px;height:7px;border-radius:50%;background:#639922;display:inline-block}
+.sdot.err{background:#E24B4A}
+.sdot.loading{background:#BA7517;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.mode-banner{padding:8px 24px;font-size:11px;font-weight:600;letter-spacing:1px;display:flex;align-items:center;gap:8px}
+.mode-banner.active-mode{background:#031a12;color:#3bbf90;border-bottom:0.5px solid #0F6E56}
+.mode-banner.date-mode{background:#0c1e35;color:#85C3F7;border-bottom:0.5px solid #185FA5}
+
+.cal-section{
+  background:linear-gradient(165deg,#3a4256 0%,#454e66 55%,#3c4458 100%);
+  border-bottom:0.5px solid var(--border2);
+  padding:18px 24px;
+  position:relative;
+}
+.cal-section::before{
+  content:'';
+  position:absolute; inset:0;
+  background-image:radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size:18px 18px;
+  pointer-events:none;
+}
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;position:relative;z-index:1}
+.cal-label{font-size:11px;letter-spacing:1.5px;color:#cdd3ea;font-weight:700;display:flex;align-items:center;gap:6px}
+.clear-btn{font-size:11px;padding:3px 10px;border:0.5px solid rgba(255,255,255,0.2);border-radius:6px;background:rgba(255,255,255,0.06);color:#dde1f2;cursor:pointer;transition:all .15s}
+.clear-btn:hover{color:#fff;border-color:var(--blue);background:rgba(55,138,221,0.22)}
+.cal-nav-row{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:14px;position:relative;z-index:1}
+.cal-nav{background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.2);border-radius:var(--radius);color:#f0f2fa;cursor:pointer;width:30px;height:30px;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.cal-nav:hover{background:rgba(55,138,221,0.3);border-color:var(--blue);color:#fff}
+.cal-month{font-size:15px;font-weight:700;min-width:160px;text-align:center;color:#ffffff;letter-spacing:.3px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;position:relative;z-index:1}
+.cal-dname{text-align:center;font-size:10px;letter-spacing:1.5px;color:#aab0d1;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,0.14);margin-bottom:4px;font-weight:700}
+.cal-day{text-align:center;padding:8px 2px;border-radius:50%;cursor:pointer;font-size:12px;font-weight:500;color:#c7cce6;border:2px solid transparent;transition:all .12s;position:relative;width:34px;height:34px;margin:0 auto;display:flex;align-items:center;justify-content:center}
+.cal-day:hover{background:rgba(255,255,255,0.12);color:#fff}
+.cal-day.has-orders{color:#ffffff;font-weight:700}
+.cal-day.has-orders::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:#7ec0ff}
+.cal-day.other-month{opacity:.25;pointer-events:none}
+.cal-day.selected{background:var(--blue);color:#fff;font-weight:700;border-color:var(--blue);box-shadow:0 0 0 3px rgba(55,138,221,0.3)}
+.cal-day.selected::after{background:#fff}
+.cal-day.today{background:var(--today-ring);color:#0f1117;font-weight:800;border-color:var(--today-ring)}
+.cal-day.today.selected{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+.kpi-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border2)}
+.kpi{padding:18px 8px;text-align:center;position:relative;overflow:hidden}
+.kpi-label{font-size:9px;letter-spacing:1.4px;font-weight:700;margin-bottom:10px;opacity:0.85}
+.kpi-val{font-size:32px;font-weight:800;letter-spacing:-1px}
+.kpi-accent{position:absolute;bottom:0;left:0;right:0;height:3px}
+
+.kpi.inpool{background:#1e2030}
+.kpi.inpool .kpi-label{color:#9ca3c4}
+.kpi.inpool .kpi-val{color:#e0e4f4}
+.kpi.inpool .kpi-accent{background:linear-gradient(90deg,#3a3f5c,#5a6080)}
+.kpi.waved{background:#0c1e35}
+.kpi.waved .kpi-label{color:#6aaeed}
+.kpi.waved .kpi-val{color:#85C3F7}
+.kpi.waved .kpi-accent{background:linear-gradient(90deg,#185FA5,#378ADD)}
+.kpi.picked{background:#1e1200}
+.kpi.picked .kpi-label{color:#e5aa55}
+.kpi.picked .kpi-val{color:#FAC775}
+.kpi.picked .kpi-accent{background:linear-gradient(90deg,#633806,#BA7517)}
+.kpi.packed{background:#0d1a04}
+.kpi.packed .kpi-label{color:#88b94a}
+.kpi.packed .kpi-val{color:#C0DD97}
+.kpi.packed .kpi-accent{background:linear-gradient(90deg,#27500A,#639922)}
+.kpi.staged{background:#110e30}
+.kpi.staged .kpi-label{color:#9a93e0}
+.kpi.staged .kpi-val{color:#C5C0F5}
+.kpi.staged .kpi-accent{background:linear-gradient(90deg,#3C3489,#7F77DD)}
+.kpi.shipped{background:#031a12}
+.kpi.shipped .kpi-label{color:#3bbf90}
+.kpi.shipped .kpi-val{color:#5DCAA5}
+.kpi.shipped .kpi-accent{background:linear-gradient(90deg,#085041,#1D9E75)}
+.kpi.total{background:#111318}
+.kpi.total .kpi-label{color:#8888aa}
+.kpi.total .kpi-val{color:#e8e8f0}
+.kpi.total .kpi-accent{background:linear-gradient(90deg,#2C2C2A,#888780)}
+
+.kpi.shipped.dimmed{opacity:0.35}
+.kpi.shipped.dimmed .kpi-label::after{content:' (date only)';font-size:7px;opacity:0.7}
+
+.table-wrap{padding:20px 24px 40px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{padding:10px 10px;text-align:center;font-size:10px;letter-spacing:1px;color:var(--muted);font-weight:700;border-bottom:0.5px solid var(--border2);background:var(--surface2);white-space:nowrap}
+tbody tr{border-bottom:0.5px solid var(--border);transition:background .12s}
+tbody tr:hover{background:var(--surface2)}
+tbody td{padding:10px;text-align:center;vertical-align:middle}
+td.left{text-align:left;padding-left:14px}
+.badge{display:inline-block;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.5px;white-space:nowrap}
+.b-waved{background:#E6F1FB;color:#185FA5}
+.b-picked{background:#FAEEDA;color:#633806}
+.b-packed{background:#EAF3DE;color:#27500A}
+.b-staged{background:#EEEDFE;color:#3C3489}
+.b-shipped{background:#E1F5EE;color:#085041}
+.b-inpool{background:#f1f0ee;color:#5F5E5A}
+@media (prefers-color-scheme:dark){
+  .b-waved{background:#0C447C;color:#85B7EB}
+  .b-picked{background:#412402;color:#FAC775}
+  .b-packed{background:#173404;color:#C0DD97}
+  .b-staged{background:#26215C;color:#AFA9EC}
+  .b-shipped{background:#04342C;color:#5DCAA5}
+  .b-inpool{background:#2C2C2A;color:#B4B2A9}
+}
+.days-pill{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#E24B4A;color:#fff;font-size:12px;font-weight:700}
+.urgent-date{color:var(--red);font-weight:700}
+.empty{text-align:center;padding:48px;color:var(--muted);font-size:13px}
+.empty i{font-size:36px;display:block;margin-bottom:8px}
+
+/* WARNING ROW — MABD due in 1 day */
+tr.warn-row{background:rgba(226,75,74,0.07)}
+tr.warn-row:hover{background:rgba(226,75,74,0.13)}
+tr.warn-row td.left{border-left:3px solid #E24B4A}
+
+/* PROGRESS BAR PER ORDER */
+.stage-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:110px}
+.stage-track{position:relative;width:100%;height:6px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.stage-fill{position:absolute;left:0;top:0;height:100%;border-radius:4px;transition:width .2s}
+.stage-fill.s-inpool{width:8%;background:#5a6080}
+.stage-fill.s-waved{width:25%;background:linear-gradient(90deg,#185FA5,#378ADD)}
+.stage-fill.s-picked{width:45%;background:linear-gradient(90deg,#633806,#BA7517)}
+.stage-fill.s-packed{width:65%;background:linear-gradient(90deg,#27500A,#639922)}
+.stage-fill.s-staged{width:85%;background:linear-gradient(90deg,#3C3489,#7F77DD)}
+.stage-fill.s-shipped{width:100%;background:linear-gradient(90deg,#085041,#1D9E75)}
+.stage-text{font-size:9px;letter-spacing:.5px;font-weight:700;color:var(--muted)}
+
+/* SEARCH BAR */
+.search-wrap{position:relative;display:flex;align-items:center}
+.search-input{background:var(--surface2);border:0.5px solid var(--border2);border-radius:var(--radius);padding:6px 10px 6px 30px;font-size:12px;color:var(--text);width:200px;transition:width .2s,border-color .2s}
+.search-input:focus{outline:none;border-color:var(--blue);width:240px}
+.search-icon{position:absolute;left:9px;font-size:13px;color:var(--muted);pointer-events:none}
+.search-clear{position:absolute;right:7px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px;display:none}
+.search-clear.show{display:block}
+
+/* EXPORT BUTTON */
+.export-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius);background:var(--surface2);border:0.5px solid var(--border2);color:var(--text);font-size:12px;font-weight:600;cursor:pointer;transition:background .15s}
+.export-btn:hover{background:var(--bg);border-color:var(--green)}
+.export-btn i{font-size:14px;color:var(--green)}
+
+/* AUTO-REFRESH INDICATOR */
+.auto-refresh{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:4px}
+.auto-refresh .ti-clock{font-size:12px}
+
+@media (max-width:900px){
+  .kpi-strip{grid-template-columns:repeat(4,1fr)}
+  .kpi-val{font-size:22px}
+  .search-input{width:130px}
+  .search-input:focus{width:150px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand-block">
+    <div class="eyebrow">NFI INDUSTRIES</div>
+    <div class="title">#510 Operations <span class="chip">ORDER STATUS</span></div>
+  </div>
+  <div class="refresh-row">
+    <div class="search-wrap">
+      <i class="ti ti-search search-icon"></i>
+      <input type="text" class="search-input" id="search-box" placeholder="Search order ID, company, or name…" oninput="onSearch()"/>
+      <button class="search-clear" id="search-clear-btn" onclick="clearSearch()">✕</button>
+    </div>
+    <button class="export-btn" onclick="exportCSV()">
+      <i class="ti ti-download"></i> Export
+    </button>
+    <span class="auto-refresh"><i class="ti ti-clock"></i> <span id="auto-refresh-txt">60s</span></span>
+    <span class="sdot" id="sdot"></span>
+    <span id="status-txt">Connecting…</span>
+    <span id="ts" style="color:var(--muted)"></span>
+    <a href="https://mehtax10.github.io/nfii/" target="_blank" class="outbound-btn">
+      <i class="ti ti-arrow-up-right"></i> Outbound
+    </a>
+    <button class="refresh-btn" onclick="load()">
+      <i class="ti ti-refresh" id="ricon"></i> Refresh
+    </button>
+  </div>
+</div>
+
+<div class="mode-banner active-mode" id="mode-banner">
+  <i class="ti ti-activity"></i>
+  <span id="mode-text">ACTIVE ORDERS — Shipped orders hidden. Select a date to view shipped.</span>
+</div>
+
+<div class="cal-section">
+  <div class="cal-header">
+    <span class="cal-label"><i class="ti ti-calendar"></i> FILTER BY DATE</span>
+    <button class="clear-btn" onclick="clearDate()">✕ Clear date</button>
+  </div>
+  <div class="cal-nav-row">
+    <button class="cal-nav" onclick="prevM()">‹</button>
+    <div class="cal-month" id="cal-title"></div>
+    <button class="cal-nav" onclick="nextM()">›</button>
+  </div>
+  <div class="cal-grid" id="cal"></div>
+</div>
+
+<div class="kpi-strip">
+  <div class="kpi inpool"><div class="kpi-label">IN POOL</div><div class="kpi-val" id="k-inpool">0</div><div class="kpi-accent"></div></div>
+  <div class="kpi waved"><div class="kpi-label">WAVED</div><div class="kpi-val" id="k-waved">0</div><div class="kpi-accent"></div></div>
+  <div class="kpi picked"><div class="kpi-label">PICKED</div><div class="kpi-val" id="k-picked">0</div><div class="kpi-accent"></div></div>
+  <div class="kpi packed"><div class="kpi-label">PACKED</div><div class="kpi-val" id="k-packed">0</div><div class="kpi-accent"></div></div>
+  <div class="kpi staged"><div class="kpi-label">STAGED</div><div class="kpi-val" id="k-staged">0</div><div class="kpi-accent"></div></div>
+  <div class="kpi shipped" id="kpi-shipped"><div class="kpi-label">SHIPPED</div><div class="kpi-val" id="k-shipped">0</div><div class="kpi-accent"></div></div>
+  <div class="kpi total"><div class="kpi-label">TOTAL ORDERS</div><div class="kpi-val" id="k-total">0</div><div class="kpi-accent"></div></div>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>ORDER ID</th><th>COMPANY</th><th>ORDER NAME</th>
+        <th>PO NUMBER</th><th>UNITS</th><th>PICKING UP BY</th>
+        <th>STATUS</th>
+        <th>PIPELINE</th>
+        <th>SHIP DATE</th><th>CANCEL DATE</th><th>DAYS TO CANCEL</th><th>ORDER DATE</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <div class="empty" id="empty" style="display:none">
+    <i class="ti ti-package"></i>
+    No orders found for the selected date.
+  </div>
+</div>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQfdckna6QSuo-GA1SO6mVTZVzqhlEXR37iDEEY_NA1tAJc_Fl3CDHmLXQsKfUtrP_PTVYNOSV-sdx6/pub?output=csv";
+
+// Strip a Shipment ID down to its last 6 digits, with leading zeros removed
+function shortOrderId(val) {
+  if (!val) return "";
+  const digitsOnly = String(val).replace(/\D/g, "");
+  const last6 = digitsOnly.slice(-6);
+  return last6.replace(/^0+/, "") || last6; // keep at least something if all zeros
+}
+
+const DEMO = [
+  {order:"100234",company:"Client 1",orderName:"Store A",po:"PO-9001",units:5200,carrier:"ABC Trucking",status:"WAVED",shipDate:"6/17/2024",cancelDate:"6/19/2024",daysToCancel:3,orderDate:"6/16/2024 09:15 AM"},
+  {order:"100235",company:"Client 2",orderName:"Store B",po:"PO-9002",units:3800,carrier:"Swift Logistics",status:"PICKED",shipDate:"6/17/2024",cancelDate:"6/17/2024",daysToCancel:1,orderDate:"6/16/2024 08:40 AM"},
+  {order:"100236",company:"Client 2",orderName:"Store C",po:"PO-9003",units:2100,carrier:"Swift Logistics",status:"JUST CAME / IN POOL",shipDate:"6/18/2024",cancelDate:"6/20/2024",daysToCancel:4,orderDate:"6/16/2024 10:05 AM"},
+  {order:"100237",company:"Client 3",orderName:"Store D",po:"PO-9004",units:1500,carrier:"FedEx Freight",status:"IN POOL / WAITING FOR PICK",shipDate:"6/17/2024",cancelDate:"6/17/2024",daysToCancel:1,orderDate:"6/16/2024 07:50 AM"},
+  {order:"100238",company:"Client 4",orderName:"Store E",po:"PO-9005",units:4500,carrier:"JB Hunt",status:"WAVED",shipDate:"6/18/2024",cancelDate:"6/20/2024",daysToCancel:4,orderDate:"6/16/2024 08:10 AM"},
+  {order:"100239",company:"Client 4",orderName:"Store F",po:"PO-9006",units:6200,carrier:"JB Hunt",status:"PICKED",shipDate:"6/17/2024",cancelDate:"6/17/2024",daysToCancel:1,orderDate:"6/16/2024 08:25 AM"},
+  {order:"100240",company:"Client 4",orderName:"Store G",po:"PO-9007",units:7100,carrier:"JB Hunt",status:"PACKED",shipDate:"6/17/2024",cancelDate:"6/17/2024",daysToCancel:1,orderDate:"6/16/2024 09:05 AM"},
+  {order:"100241",company:"Client 4",orderName:"Store H",po:"PO-9008",units:7100,carrier:"JB Hunt",status:"STAGED",shipDate:"6/17/2024",cancelDate:"6/17/2024",daysToCancel:1,orderDate:"6/16/2024 10:00 AM"},
+  {order:"100242",company:"Client 5",orderName:"Store I",po:"PO-9009",units:2200,carrier:"Old Dominion",status:"SHIPPED",shipDate:"6/16/2024",cancelDate:"6/16/2024",daysToCancel:0,orderDate:"6/16/2024 11:20 AM"},
+  {order:"100243",company:"Client 5",orderName:"Store J",po:"PO-9010",units:1800,carrier:"Old Dominion",status:"SHIPPED",shipDate:"6/15/2024",cancelDate:"6/15/2024",daysToCancel:0,orderDate:"6/15/2024 09:00 AM"},
+];
+
+let allRows = [];
+let selDate = null;
+let calY = new Date().getFullYear(), calM = new Date().getMonth();
+const TODAY = new Date();
+const TODAY_STR = `${TODAY.getMonth()+1}/${TODAY.getDate()}/${TODAY.getFullYear()}`;
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+function isShipped(r) {
+  return r.status.includes("SHIPPED");
+}
+
+function excelDateToJS(val) {
+  if (!val && val !== 0) return "";
+  if (isNaN(Number(val))) return String(val);
+  const serial = Number(val);
+  const d = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
+  if (isNaN(d.getTime())) return String(val);
+  return (d.getUTCMonth()+1) + "/" + d.getUTCDate() + "/" + d.getUTCFullYear();
+}
+
+// Days remaining from today until a given "M/D/YYYY" date string (can be negative if past)
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const target = new Date(dateStr);
+  if (isNaN(target)) return null;
+  const today = new Date();
+  const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const targetMid = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+  return Math.round((targetMid - todayMid) / 86400000);
+}
+
+function setStatus(state, msg) {
+  const dot = document.getElementById("sdot");
+  const txt = document.getElementById("status-txt");
+  dot.className = "sdot" + (state==="err" ? " err" : state==="loading" ? " loading" : "");
+  txt.textContent = msg;
+}
+
+async function load() {
+  const icon = document.getElementById("ricon");
+  icon.classList.add("spin");
+  setStatus("loading", "Fetching…");
+  try {
+    const res = await fetch(CSV_URL + "&t=" + Date.now());
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const text = await res.text();
+    const wb = XLSX.read(text, {type:"string"});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(ws, {defval:""});
+    if (!json.length) throw new Error("Sheet appears empty");
+    allRows = json.map(r => ({
+      order:         shortOrderId(r["Shipment ID"]||r["shipment id"]||""),
+      company:       r["Client"]||r["client"]||r["Company"]||"",
+      orderName:     r["Ship To Name"]||r["ship to name"]||"",
+      po:            r["Cons PO"]||r["cons po"]||r["PO"]||"",
+      units:         r["Tot Qty"]||r["tot qty"]||r["Units"]||"–",
+      carrier:       r["Carrier"]||r["carrier"]||"",
+      status:       (r["Status"]||r["status"]||"").toString().toUpperCase().trim(),
+      shipDate:      excelDateToJS(r["Schedule Ship Date"]||r["schedule ship date"]||""),
+      cancelDate:    excelDateToJS(r["Plan Canc Date"]||r["plan canc date"]||""),
+      daysToCancel:  daysUntil(excelDateToJS(r["Plan Canc Date"]||r["plan canc date"]||"")),
+      orderDate:     excelDateToJS(r["Create Date"]||r["create date"]||""),
+    }));
+    const now = new Date();
+    document.getElementById("ts").textContent =
+      now.toLocaleDateString("en-US") + " " +
+      now.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"});
+    setStatus("ok", "Live · " + allRows.length + " orders");
+    calY = now.getFullYear(); calM = now.getMonth();
+  } catch(e) {
+    if (!allRows.length) allRows = [...DEMO];
+    setStatus("err", "Demo data · " + e.message);
+    calY = 2024; calM = 5; // June 2024 for demo
+  }
+  icon.classList.remove("spin");
+  renderCal();
+  render();
+}
+
+function getOrderDates() {
+  const s = new Set();
+  allRows.forEach(r => {
+    const d = new Date(r.orderDate);
+    if (!isNaN(d)) s.add(`${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`);
+  });
+  return s;
+}
+
+function renderCal() {
+  document.getElementById("cal-title").textContent = MONTHS[calM] + " " + calY;
+  const g = document.getElementById("cal");
+  g.innerHTML = "";
+  const dates = getOrderDates();
+  DAYS.forEach(d => {
+    const el = document.createElement("div");
+    el.className = "cal-dname"; el.textContent = d; g.appendChild(el);
+  });
+  const first = new Date(calY, calM, 1).getDay();
+  const total = new Date(calY, calM+1, 0).getDate();
+  const prev  = new Date(calY, calM, 0).getDate();
+
+  for (let i = first-1; i >= 0; i--) {
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "display:flex;align-items:center;justify-content:center;";
+    const el = document.createElement("div");
+    el.className = "cal-day other-month"; el.textContent = prev - i;
+    wrap.appendChild(el); g.appendChild(wrap);
+  }
+
+  for (let d = 1; d <= total; d++) {
+    const ds = `${calM+1}/${d}/${calY}`;
+    let cls = "cal-day";
+    if (dates.has(ds)) cls += " has-orders";
+    if (selDate === ds) cls += " selected";
+    if (ds === TODAY_STR) cls += " today";
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "display:flex;align-items:center;justify-content:center;";
+    const el = document.createElement("div");
+    el.className = cls; el.textContent = d;
+    el.onclick = () => { selDate = (selDate === ds ? null : ds); renderCal(); render(); };
+    wrap.appendChild(el); g.appendChild(wrap);
+  }
+
+  const rem = (first + total) <= 35 ? 35-(first+total) : 42-(first+total);
+  for (let d = 1; d <= rem; d++) {
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "display:flex;align-items:center;justify-content:center;";
+    const el = document.createElement("div");
+    el.className = "cal-day other-month"; el.textContent = d;
+    wrap.appendChild(el); g.appendChild(wrap);
+  }
+}
+
+function prevM() { calM--; if (calM < 0) { calM=11; calY--; } renderCal(); }
+function nextM() { calM++; if (calM > 11) { calM=0; calY++; } renderCal(); }
+function clearDate() { selDate = null; renderCal(); render(); }
+
+function formatDate(val) {
+  if (!val) return "–";
+  const d = new Date(val);
+  if (isNaN(d)) return val;
+  return d.toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric"});
+}
+
+function badge(s) {
+  const map = {"WAVED":"b-waved","PICKED":"b-picked","PACKED":"b-packed","STAGED":"b-staged","SHIPPED":"b-shipped"};
+  const key = Object.keys(map).find(k => s.includes(k)) || "";
+  return `<span class="badge ${map[key]||'b-inpool'}">${s}</span>`;
+}
+
+// Pipeline stage order, used for the per-order progress bar
+const STAGE_ORDER = [
+  {key:"INPOOL",  cls:"s-inpool",  label:"IN POOL"},
+  {key:"WAVED",   cls:"s-waved",   label:"WAVED"},
+  {key:"PICKED",  cls:"s-picked",  label:"PICKED"},
+  {key:"PACKED",  cls:"s-packed",  label:"PACKED"},
+  {key:"STAGED",  cls:"s-staged",  label:"STAGED"},
+  {key:"SHIPPED", cls:"s-shipped", label:"SHIPPED"},
+];
+
+function getStage(status) {
+  if (status.includes("SHIPPED")) return STAGE_ORDER[5];
+  if (status.includes("STAGED"))  return STAGE_ORDER[4];
+  if (status.includes("PACKED"))  return STAGE_ORDER[3];
+  if (status.includes("PICKED"))  return STAGE_ORDER[2];
+  if (status.includes("WAVED"))   return STAGE_ORDER[1];
+  return STAGE_ORDER[0]; // IN POOL / JUST CAME / default
+}
+
+function stageBar(status) {
+  const stage = getStage(status);
+  return `
+    <div class="stage-wrap">
+      <div class="stage-track">
+        <div class="stage-fill ${stage.cls}"></div>
+      </div>
+      <div class="stage-text">${stage.label}</div>
+    </div>
+  `;
+}
+
+// ── Search ──────────────────────────────────────────────────────────────
+let searchTerm = "";
+function onSearch() {
+  const box = document.getElementById("search-box");
+  searchTerm = box.value.trim().toLowerCase();
+  document.getElementById("search-clear-btn").classList.toggle("show", searchTerm.length > 0);
+  render();
+}
+function clearSearch() {
+  document.getElementById("search-box").value = "";
+  searchTerm = "";
+  document.getElementById("search-clear-btn").classList.remove("show");
+  render();
+}
+
+// ── CSV Export ──────────────────────────────────────────────────────────
+function exportCSV() {
+  const headers = ["ORDER ID","COMPANY","ORDER NAME","PO NUMBER","UNITS","PICKING UP BY","STATUS","SHIP DATE","CANCEL DATE","DAYS TO CANCEL","ORDER DATE"];
+  const rows = currentVisibleRows.map(r => [
+    r.order, r.company, r.orderName, r.po, r.units, r.carrier, r.status, formatDate(r.shipDate), formatDate(r.cancelDate), r.daysToCancel, r.orderDate
+  ]);
+  const escape = v => `"${String(v).replace(/"/g,'""')}"`;
+  const csv = [headers, ...rows].map(row => row.map(escape).join(",")).join("\n");
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `nfi_510_orders_${selDate ? selDate.replace(/\//g,'-') : 'active'}_${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+let currentVisibleRows = [];
+
+function render() {
+  // Orders "active" on the home page = filtered by Create Date (when they entered the pool)
+  const createDateFiltered = allRows.filter(r => {
+    if (!selDate) return true;
+    const d = new Date(r.orderDate);
+    return !isNaN(d) && `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}` === selDate;
+  });
+
+  // Shipped orders for a selected date = matched against Schedule Ship Date instead
+  const shippedOnSelDate = selDate
+    ? allRows.filter(r => {
+        if (!isShipped(r)) return false;
+        const d = new Date(r.shipDate);
+        return !isNaN(d) && `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}` === selDate;
+      })
+    : [];
+
+  // dateFiltered = whichever rows are relevant for KPI counts on this view
+  const dateFiltered = selDate
+    ? [...createDateFiltered.filter(r => !isShipped(r)), ...shippedOnSelDate]
+    : createDateFiltered;
+
+  // Home (no date selected): hide shipped. Date selected: active orders created that day + shipped orders that shipped that day.
+  let rows = selDate
+    ? dateFiltered
+    : dateFiltered.filter(r => !isShipped(r));
+
+  // Apply search filter (order id, company, or order/ship-to name)
+  if (searchTerm) {
+    rows = rows.filter(r =>
+      (r.order && r.order.toLowerCase().includes(searchTerm)) ||
+      (r.company && r.company.toLowerCase().includes(searchTerm)) ||
+      (r.orderName && r.orderName.toLowerCase().includes(searchTerm))
+    );
+  }
+
+  currentVisibleRows = rows;
+
+  const countFrom = (arr, s) => arr.filter(r => r.status === s).length;
+  const inpool = dateFiltered.filter(r => r.status.includes("IN POOL") || r.status.includes("JUST CAME")).length;
+  const shippedCount = dateFiltered.filter(r => isShipped(r)).length;
+
+  document.getElementById("k-inpool").textContent  = inpool;
+  document.getElementById("k-waved").textContent   = countFrom(dateFiltered, "WAVED");
+  document.getElementById("k-picked").textContent  = countFrom(dateFiltered, "PICKED");
+  document.getElementById("k-packed").textContent  = countFrom(dateFiltered, "PACKED");
+  document.getElementById("k-staged").textContent  = countFrom(dateFiltered, "STAGED");
+  document.getElementById("k-shipped").textContent = shippedCount;
+  document.getElementById("k-total").textContent   = (selDate ? dateFiltered.length : dateFiltered.filter(r=>!isShipped(r)).length + shippedCount);
+
+  const kpiShipped = document.getElementById("kpi-shipped");
+  const banner = document.getElementById("mode-banner");
+  const modeText = document.getElementById("mode-text");
+
+  if (selDate) {
+    kpiShipped.classList.remove("dimmed");
+    banner.className = "mode-banner date-mode";
+    const dateObj = new Date(selDate);
+    const label = isNaN(dateObj) ? selDate : dateObj.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
+    modeText.textContent = `VIEWING ${label.toUpperCase()} — Orders created that day, plus orders shipped that day.`;
+  } else {
+    kpiShipped.classList.add("dimmed");
+    banner.className = "mode-banner active-mode";
+    const hiddenCount = shippedCount;
+    const dueTomorrowCount = dateFiltered.filter(r => !isShipped(r) && r.daysToCancel === 1).length;
+    let txt = `ACTIVE ORDERS — ${hiddenCount} shipped order${hiddenCount!==1?'s':''} hidden. Select a date to view shipped.`;
+    if (dueTomorrowCount > 0) {
+      txt += ` ⚠ ${dueTomorrowCount} order${dueTomorrowCount!==1?'s':''} cancel in 1 day.`;
+    }
+    modeText.textContent = txt;
+  }
+
+  const tbody = document.getElementById("tbody");
+  const empty = document.getElementById("empty");
+  tbody.innerHTML = "";
+  if (!rows.length) { empty.style.display = "block"; return; }
+  empty.style.display = "none";
+  rows.forEach(r => {
+    const dtc = r.daysToCancel;
+    const hasDtc = dtc !== null && dtc !== undefined && !isNaN(dtc);
+    const u = hasDtc && dtc <= 1 && dtc >= 0;
+    const isWarning = !isShipped(r) && hasDtc && dtc === 1;
+    const shipFormatted = formatDate(r.shipDate);
+    const cancelFormatted = formatDate(r.cancelDate);
+    const daysPill = hasDtc && (dtc === 1 || dtc === 0)
+      ? `<span class="days-pill">${dtc}</span>`
+      : `<span>${hasDtc ? dtc : '–'}</span>`;
+    const tr = document.createElement("tr");
+    if (isWarning) tr.classList.add("warn-row");
+    tr.innerHTML = `
+      <td style="font-weight:600">${isWarning ? '⚠ ' : ''}${r.order}</td>
+      <td style="font-weight:600">${r.company}</td>
+      <td>${r.orderName}</td>
+      <td>${r.po}</td>
+      <td>${r.units}</td>
+      <td>${r.carrier}</td>
+      <td>${badge(r.status)}</td>
+      <td>${stageBar(r.status)}</td>
+      <td>${shipFormatted}</td>
+      <td class="${u?'urgent-date':''}">${cancelFormatted}</td>
+      <td>${daysPill}</td>
+      <td style="color:var(--muted)">${r.orderDate}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Auto-refresh every 60 seconds ─────────────────────────────────────────
+let autoRefreshSeconds = 60;
+function tickAutoRefresh() {
+  autoRefreshSeconds--;
+  if (autoRefreshSeconds <= 0) {
+    autoRefreshSeconds = 60;
+    load();
+  }
+  document.getElementById("auto-refresh-txt").textContent = autoRefreshSeconds + "s";
+}
+setInterval(tickAutoRefresh, 1000);
+
+load();
+</script>
+</body>
+</html>
