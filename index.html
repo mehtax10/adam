@@ -241,11 +241,11 @@ tr.warn-row td.left{border-left:3px solid #E24B4A}
 
 <div class="kpi-strip">
   <div class="kpi inpool"><div class="kpi-label">IN POOL</div><div class="kpi-val" id="k-inpool">0</div><div class="kpi-accent"></div></div>
-  <div class="kpi waved"><div class="kpi-label">WAVED</div><div class="kpi-val" id="k-waved">0</div><div class="kpi-accent"></div></div>
-  <div class="kpi picked"><div class="kpi-label">PICKED</div><div class="kpi-val" id="k-picked">0</div><div class="kpi-accent"></div></div>
-  <div class="kpi packed"><div class="kpi-label">PACKED</div><div class="kpi-val" id="k-packed">0</div><div class="kpi-accent"></div></div>
-  <div class="kpi staged"><div class="kpi-label">STAGED</div><div class="kpi-val" id="k-staged">0</div><div class="kpi-accent"></div></div>
-  <div class="kpi shipped" id="kpi-shipped"><div class="kpi-label">SHIPPED</div><div class="kpi-val" id="k-shipped">0</div><div class="kpi-accent"></div></div>
+  <div class="kpi waved"><div class="kpi-label">PICKING PENDING</div><div class="kpi-val" id="k-waved">0</div><div class="kpi-accent"></div></div>
+  <div class="kpi picked"><div class="kpi-label">PACKING PENDING</div><div class="kpi-val" id="k-picked">0</div><div class="kpi-accent"></div></div>
+  <div class="kpi packed"><div class="kpi-label">STAGING PENDING</div><div class="kpi-val" id="k-packed">0</div><div class="kpi-accent"></div></div>
+  <div class="kpi staged"><div class="kpi-label">SHIP CONFIRM PENDING</div><div class="kpi-val" id="k-staged">0</div><div class="kpi-accent"></div></div>
+  <div class="kpi shipped" id="kpi-shipped"><div class="kpi-label">LOADING PENDING</div><div class="kpi-val" id="k-shipped">0</div><div class="kpi-accent"></div></div>
   <div class="kpi total"><div class="kpi-label">TOTAL ORDERS</div><div class="kpi-val" id="k-total">0</div><div class="kpi-accent"></div></div>
 </div>
 
@@ -280,16 +280,12 @@ function shortOrderId(val) {
 }
 
 const DEMO = [
-  {order:"100234",company:"Client 1",orderName:"Store A",po:"PO-9001",units:5200,carrier:"ABC Trucking",status:"WAVED",shipDate:"6/17/2024",cancelDate:"6/19/2024",daysToCancel:3,orderDate:"6/16/2024 09:15 AM"},
-  {order:"100235",company:"Client 2",orderName:"Store B",po:"PO-9002",units:3800,carrier:"Swift Logistics",status:"PICKED",shipDate:"6/17/2024",cancelDate:"6/17/2024",daysToCancel:1,orderDate:"6/16/2024 08:40 AM"},
-  {order:"100236",company:"Client 2",orderName:"Store C",po:"PO-9003",units:2100,carrier:"Swift Logistics",status:"JUST CAME / IN POOL",shipDate:"6/18/2024",cancelDate:"6/20/2024",daysToCancel:4,orderDate:"6/16/2024 10:05 AM"},
-  {order:"100237",company:"Client 3",orderName:"Store D",po:"PO-9004",units:1500,carrier:"FedEx Freight",status:"IN POOL / WAITING FOR PICK",shipDate:"6/17/2024",cancelDate:"6/17/2024",daysToCancel:1,orderDate:"6/16/2024 07:50 AM"},
-  {order:"100238",company:"Client 4",orderName:"Store E",po:"PO-9005",units:4500,carrier:"JB Hunt",status:"WAVED",shipDate:"6/18/2024",cancelDate:"6/20/2024",daysToCancel:4,orderDate:"6/16/2024 08:10 AM"},
-  {order:"100239",company:"Client 4",orderName:"Store F",po:"PO-9006",units:6200,carrier:"JB Hunt",status:"PICKED",shipDate:"6/17/2024",cancelDate:"6/17/2024",daysToCancel:1,orderDate:"6/16/2024 08:25 AM"},
-  {order:"100240",company:"Client 4",orderName:"Store G",po:"PO-9007",units:7100,carrier:"JB Hunt",status:"PACKED",shipDate:"6/17/2024",cancelDate:"6/17/2024",daysToCancel:1,orderDate:"6/16/2024 09:05 AM"},
-  {order:"100241",company:"Client 4",orderName:"Store H",po:"PO-9008",units:7100,carrier:"JB Hunt",status:"STAGED",shipDate:"6/17/2024",cancelDate:"6/17/2024",daysToCancel:1,orderDate:"6/16/2024 10:00 AM"},
-  {order:"100242",company:"Client 5",orderName:"Store I",po:"PO-9009",units:2200,carrier:"Old Dominion",status:"SHIPPED",shipDate:"6/16/2024",cancelDate:"6/16/2024",daysToCancel:0,orderDate:"6/16/2024 11:20 AM"},
-  {order:"100243",company:"Client 5",orderName:"Store J",po:"PO-9010",units:1800,carrier:"Old Dominion",status:"SHIPPED",shipDate:"6/15/2024",cancelDate:"6/15/2024",daysToCancel:0,orderDate:"6/15/2024 09:00 AM"},
+  {order:"893622",company:"GIII",orderName:"WINNER'S APPAREL LTD #891",po:"10 597412",units:600,carrier:"Highlight Motors",status:"LOADING PENDING",shipDate:"6/15/2026",cancelDate:"6/23/2026",daysToCancel:4,orderDate:"5/18/2026 09:00 AM"},
+  {order:"902558",company:"GIII",orderName:"WINNER'S APPAREL LTD #891",po:"10 347917",units:1536,carrier:"Apps",status:"SHIP CONFIRM PENDING",shipDate:"6/15/2026",cancelDate:"6/22/2026",daysToCancel:3,orderDate:"5/19/2026 09:00 AM"},
+  {order:"946705",company:"GIII",orderName:"WINNER'S APPAREL LTD #891",po:"10 032370",units:1500,carrier:"NFII Truck",status:"STAGING PENDING",shipDate:"5/27/2026",cancelDate:"7/2/2026",daysToCancel:13,orderDate:"5/26/2026 09:00 AM"},
+  {order:"105746",company:"GIII",orderName:"WINNER'S APPAREL LTD #891",po:"10 387053",units:300,carrier:"NFII Truck",status:"PACKING PENDING",shipDate:"6/16/2026",cancelDate:"7/21/2026",daysToCancel:32,orderDate:"6/16/2026 09:00 AM"},
+  {order:"107068",company:"GIII",orderName:"KARL LAGERFELD PARIS 6501",po:"873965",units:22,carrier:"Fedex",status:"PICKING PENDING",shipDate:"6/16/2026",cancelDate:"6/23/2026",daysToCancel:4,orderDate:"6/16/2026 09:00 AM"},
+  {order:"118629",company:"GIII",orderName:"WINNER'S APPAREL LTD #891",po:"10 208678",units:1500,carrier:"NFII Truck",status:"IN POOL",shipDate:"6/29/2026",cancelDate:"7/4/2026",daysToCancel:15,orderDate:"6/17/2026 09:00 AM"},
 ];
 
 let allRows = [];
@@ -301,7 +297,7 @@ const MONTHS = ["January","February","March","April","May","June","July","August
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
 function isShipped(r) {
-  return r.status.includes("SHIPPED");
+  return r.status.toUpperCase().includes("LOADING PENDING");
 }
 
 function excelDateToJS(val) {
@@ -438,28 +434,34 @@ function formatDate(val) {
 }
 
 function badge(s) {
-  const map = {"WAVED":"b-waved","PICKED":"b-picked","PACKED":"b-packed","STAGED":"b-staged","SHIPPED":"b-shipped"};
+  const map = {
+    "PICKING PENDING":"b-waved",
+    "PACKING PENDING":"b-picked",
+    "STAGING PENDING":"b-packed",
+    "SHIP CONFIRM PENDING":"b-staged",
+    "LOADING PENDING":"b-shipped"
+  };
   const key = Object.keys(map).find(k => s.includes(k)) || "";
   return `<span class="badge ${map[key]||'b-inpool'}">${s}</span>`;
 }
 
 // Pipeline stage order, used for the per-order progress bar
 const STAGE_ORDER = [
-  {key:"INPOOL",  cls:"s-inpool",  label:"IN POOL"},
-  {key:"WAVED",   cls:"s-waved",   label:"WAVED"},
-  {key:"PICKED",  cls:"s-picked",  label:"PICKED"},
-  {key:"PACKED",  cls:"s-packed",  label:"PACKED"},
-  {key:"STAGED",  cls:"s-staged",  label:"STAGED"},
-  {key:"SHIPPED", cls:"s-shipped", label:"SHIPPED"},
+  {key:"INPOOL",   cls:"s-inpool",  label:"IN POOL"},
+  {key:"PICKING",  cls:"s-waved",   label:"PICKING PENDING"},
+  {key:"PACKING",  cls:"s-picked",  label:"PACKING PENDING"},
+  {key:"STAGING",  cls:"s-packed",  label:"STAGING PENDING"},
+  {key:"SHIPCONF", cls:"s-staged",  label:"SHIP CONFIRM PENDING"},
+  {key:"LOADING",  cls:"s-shipped", label:"LOADING PENDING"},
 ];
 
 function getStage(status) {
-  if (status.includes("SHIPPED")) return STAGE_ORDER[5];
-  if (status.includes("STAGED"))  return STAGE_ORDER[4];
-  if (status.includes("PACKED"))  return STAGE_ORDER[3];
-  if (status.includes("PICKED"))  return STAGE_ORDER[2];
-  if (status.includes("WAVED"))   return STAGE_ORDER[1];
-  return STAGE_ORDER[0]; // IN POOL / JUST CAME / default
+  if (status.includes("LOADING PENDING"))       return STAGE_ORDER[5];
+  if (status.includes("SHIP CONFIRM PENDING"))  return STAGE_ORDER[4];
+  if (status.includes("STAGING PENDING"))       return STAGE_ORDER[3];
+  if (status.includes("PACKING PENDING"))       return STAGE_ORDER[2];
+  if (status.includes("PICKING PENDING"))       return STAGE_ORDER[1];
+  return STAGE_ORDER[0]; // IN POOL / default
 }
 
 function stageBar(status) {
@@ -550,14 +552,14 @@ function render() {
   currentVisibleRows = rows;
 
   const countFrom = (arr, s) => arr.filter(r => r.status === s).length;
-  const inpool = dateFiltered.filter(r => r.status.includes("IN POOL") || r.status.includes("JUST CAME")).length;
+  const inpool = dateFiltered.filter(r => r.status.includes("IN POOL")).length;
   const shippedCount = dateFiltered.filter(r => isShipped(r)).length;
 
   document.getElementById("k-inpool").textContent  = inpool;
-  document.getElementById("k-waved").textContent   = countFrom(dateFiltered, "WAVED");
-  document.getElementById("k-picked").textContent  = countFrom(dateFiltered, "PICKED");
-  document.getElementById("k-packed").textContent  = countFrom(dateFiltered, "PACKED");
-  document.getElementById("k-staged").textContent  = countFrom(dateFiltered, "STAGED");
+  document.getElementById("k-waved").textContent   = countFrom(dateFiltered, "PICKING PENDING");
+  document.getElementById("k-picked").textContent  = countFrom(dateFiltered, "PACKING PENDING");
+  document.getElementById("k-packed").textContent  = countFrom(dateFiltered, "STAGING PENDING");
+  document.getElementById("k-staged").textContent  = countFrom(dateFiltered, "SHIP CONFIRM PENDING");
   document.getElementById("k-shipped").textContent = shippedCount;
   document.getElementById("k-total").textContent   = (selDate ? dateFiltered.length : dateFiltered.filter(r=>!isShipped(r)).length + shippedCount);
 
