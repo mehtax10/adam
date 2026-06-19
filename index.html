@@ -213,7 +213,7 @@ tr.warn-row td.left{border-left:3px solid #E24B4A}
     <button class="export-btn" onclick="exportCSV()">
       <i class="ti ti-download"></i> Export
     </button>
-    <span class="auto-refresh"><i class="ti ti-clock"></i> <span id="auto-refresh-txt">Refresh 60s</span></span>
+    <span class="auto-refresh"><i class="ti ti-clock"></i> <span id="auto-refresh-txt">60s</span></span>
     <span class="sdot" id="sdot"></span>
     <span id="status-txt">Connecting…</span>
     <span id="ts" style="color:var(--muted)"></span>
@@ -269,7 +269,7 @@ tr.warn-row td.left{border-left:3px solid #E24B4A}
 </div>
 
 <script>
-const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQfdckna6QSuo-GA1SO6mVTZVzqhlEXR37iDEEY_NA1tAJc_Fl3CDHmLXQsKfUtrP_PTVYNOSV-sdx6/pub?output=csv";
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQfdckna6QSuo-GA1SO6mVTZVzqhlEXR37iDEEY_NA1tAJc_Fl3CDHmLXQsKfUtrP_PTVYNOSV-sdx6/pub?gid=0&single=true&output=csv";
 
 // Strip a Shipment ID down to its last 6 digits, with leading zeros removed
 function shortOrderId(val) {
@@ -332,7 +332,10 @@ async function load() {
   icon.classList.add("spin");
   setStatus("loading", "Fetching…");
   try {
-    const res = await fetch(CSV_URL + (CSV_URL.includes("?") ? "&" : "?") + "t=" + Date.now(), {cache:"no-store", headers:{"Accept":"text/csv"}});
+    const res = await fetch(
+      CSV_URL + "&_=" + Date.now(),
+      { cache: "no-store", mode: "cors" }
+    );
     if (!res.ok) throw new Error("HTTP " + res.status);
     const text = await res.text();
 
@@ -372,8 +375,8 @@ async function load() {
     setStatus("ok", "Live · " + allRows.length + " orders");
     calY = now.getFullYear(); calM = now.getMonth();
   } catch(e) {
-    allRows = [];
-    setStatus("err", "LIVE FAILED · " + e.message);
+    if (!allRows.length) allRows = [...DEMO];
+    setStatus("err", "Demo data · " + e.message);
     calY = TODAY.getFullYear(); calM = TODAY.getMonth(); // always show real current month
   }
   icon.classList.remove("spin");
