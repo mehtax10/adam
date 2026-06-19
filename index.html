@@ -371,7 +371,7 @@ async function load() {
 function getOrderDates() {
   const s = new Set();
   allRows.forEach(r => {
-    const d = new Date(r.orderDate);
+    const d = new Date(r.shipDate);
     if (!isNaN(d)) s.add(`${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`);
   });
   return s;
@@ -513,32 +513,26 @@ function exportCSV() {
 
 let currentVisibleRows = [];
 
+const ACTIVE_HOME_STATUSES = ["IN POOL", "PICKING PENDING", "PACKING PENDING", "STAGING PENDING"];
+function isActiveHomeStatus(status) {
+  return ACTIVE_HOME_STATUSES.some(s => status.includes(s));
+}
+
 function render() {
-  // Orders "active" on the home page = filtered by Create Date (when they entered the pool)
-  const createDateFiltered = allRows.filter(r => {
-    if (!selDate) return true;
-    const d = new Date(r.orderDate);
-    return !isNaN(d) && `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}` === selDate;
-  });
+  let rows, dateFiltered;
 
-  // Shipped orders for a selected date = matched against Schedule Ship Date instead
-  const shippedOnSelDate = selDate
-    ? allRows.filter(r => {
-        if (!isShipped(r)) return false;
-        const d = new Date(r.shipDate);
-        return !isNaN(d) && `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}` === selDate;
-      })
-    : [];
-
-  // dateFiltered = whichever rows are relevant for KPI counts on this view
-  const dateFiltered = selDate
-    ? [...createDateFiltered.filter(r => !isShipped(r)), ...shippedOnSelDate]
-    : createDateFiltered;
-
-  // Home (no date selected): hide shipped. Date selected: active orders created that day + shipped orders that shipped that day.
-  let rows = selDate
-    ? dateFiltered
-    : dateFiltered.filter(r => !isShipped(r));
+  if (!selDate) {
+    // HOME PAGE: show only the 4 active/in-progress statuses, regardless of any date
+    rows = allRows.filter(r => isActiveHomeStatus(r.status));
+    dateFiltered = rows; // KPI counts reflect the same active-only set on home
+  } else {
+    // DATE CLICKED: show every order whose Schedule Ship Date matches the selected date, any status
+    rows = allRows.filter(r => {
+      const d = new Date(r.shipDate);
+      return !isNaN(d) && `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}` === selDate;
+    });
+    dateFiltered = rows; // KPI counts reflect everything shipping that day
+  }
 
   // Apply search filter (order id, company, or order/ship-to name)
   if (searchTerm) {
@@ -561,7 +555,7 @@ function render() {
   document.getElementById("k-packed").textContent  = countFrom(dateFiltered, "STAGING PENDING");
   document.getElementById("k-staged").textContent  = countFrom(dateFiltered, "SHIP CONFIRM PENDING");
   document.getElementById("k-shipped").textContent = shippedCount;
-  document.getElementById("k-total").textContent   = (selDate ? dateFiltered.length : dateFiltered.filter(r=>!isShipped(r)).length + shippedCount);
+  document.getElementById("k-total").textContent   = dateFiltered.length;
 
   const kpiShipped = document.getElementById("kpi-shipped");
   if (selDate) {
