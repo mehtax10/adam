@@ -213,7 +213,7 @@ tr.warn-row td.left{border-left:3px solid #E24B4A}
     <button class="export-btn" onclick="exportCSV()">
       <i class="ti ti-download"></i> Export
     </button>
-    <span class="auto-refresh"><i class="ti ti-clock"></i> <span id="auto-refresh-txt">60s</span></span>
+    <span class="auto-refresh"><i class="ti ti-clock"></i> <span id="auto-refresh-txt">Refresh 60s</span></span>
     <span class="sdot" id="sdot"></span>
     <span id="status-txt">Connecting…</span>
     <span id="ts" style="color:var(--muted)"></span>
@@ -332,7 +332,7 @@ async function load() {
   icon.classList.add("spin");
   setStatus("loading", "Fetching…");
   try {
-    const res = await fetch(CSV_URL + (CSV_URL.includes("?") ? "&" : "?") + "t=" + Date.now(), {cache:"no-store"});
+    const res = await fetch(CSV_URL + (CSV_URL.includes("?") ? "&" : "?") + "t=" + Date.now(), {cache:"no-store", headers:{"Accept":"text/csv"}});
     if (!res.ok) throw new Error("HTTP " + res.status);
     const text = await res.text();
 
@@ -372,8 +372,8 @@ async function load() {
     setStatus("ok", "Live · " + allRows.length + " orders");
     calY = now.getFullYear(); calM = now.getMonth();
   } catch(e) {
-    if (!allRows.length) allRows = [...DEMO];
-    setStatus("err", "Demo data · " + e.message);
+    allRows = [];
+    setStatus("err", "LIVE FAILED · " + e.message);
     calY = TODAY.getFullYear(); calM = TODAY.getMonth(); // always show real current month
   }
   icon.classList.remove("spin");
