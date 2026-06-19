@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>NFI #510 – Order Status Dashboard</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root {
   --bg: #f0f2f5;
@@ -327,31 +326,68 @@ function setStatus(state, msg) {
   txt.textContent = msg;
 }
 
+// ── Hand-rolled CSV parser (avoids SheetJS quirks that can return 0 rows) ──
+function csvToLines(text) {
+  const lines = [];
+  let cur = "", inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '"') { inQ = !inQ; cur += ch; }
+    else if ((ch === '\n' || ch === '\r') && !inQ) {
+      if (ch === '\r' && text[i+1] === '\n') i++;
+      lines.push(cur); cur = "";
+    } else { cur += ch; }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+function splitLine(line) {
+  const cells = [];
+  let cur = "", inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQ = !inQ; }
+    else if (ch === ',' && !inQ) { cells.push(cur); cur = ""; }
+    else { cur += ch; }
+  }
+  cells.push(cur);
+  return cells.map(c => c.trim().replace(/^"|"$/g, "").replace(/[\r\n]+/g, " ").trim());
+}
+
+// Parses CSV text into an array of objects keyed by header row
+function parseCSVToObjects(text) {
+  const lines = csvToLines(text).filter(l => l.length > 0);
+  if (lines.length < 2) return [];
+  const headers = splitLine(lines[0]);
+  const records = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = splitLine(lines[i]);
+    if (cells.every(c => !c)) continue; // skip fully blank rows
+    const obj = {};
+    headers.forEach((h, idx) => { obj[h] = cells[idx] !== undefined ? cells[idx] : ""; });
+    records.push(obj);
+  }
+  return records;
+}
+
 async function load() {
   const icon = document.getElementById("ricon");
   icon.classList.add("spin");
   setStatus("loading", "Fetching…");
   try {
-    const res = await fetch(
-      CSV_URL + "&_=" + Date.now(),
-      { cache: "no-store", mode: "cors" }
-    );
+    const res = await fetch(CSV_URL + "&_=" + Date.now());
     if (!res.ok) throw new Error("HTTP " + res.status);
     const text = await res.text();
 
     console.log("CSV fetch: length=" + text.length);
     console.log("CSV preview:", text.slice(0, 300));
 
-    if (!text || !text.trim()) {
-      throw new Error("Empty response body (0 chars)");
-    }
-    if (text.trim().startsWith("<")) {
-      throw new Error("Got HTML, not CSV (likely a sign-in/redirect page)");
+    if (!text || text.length < 10) {
+      throw new Error("Empty response (" + text.length + " chars)");
     }
 
-    const wb = XLSX.read(text, {type:"string"});
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(ws, {defval:""});
+    const json = parseCSVToObjects(text);
     if (!json.length) {
       throw new Error("Parsed 0 rows from " + text.length + " chars — check header row");
     }
