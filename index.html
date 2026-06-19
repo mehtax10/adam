@@ -332,13 +332,26 @@ async function load() {
   icon.classList.add("spin");
   setStatus("loading", "Fetching…");
   try {
-    const res = await fetch(CSV_URL + "&t=" + Date.now());
+    const res = await fetch(CSV_URL + (CSV_URL.includes("?") ? "&" : "?") + "t=" + Date.now(), {cache:"no-store"});
     if (!res.ok) throw new Error("HTTP " + res.status);
     const text = await res.text();
+
+    console.log("CSV fetch: length=" + text.length);
+    console.log("CSV preview:", text.slice(0, 300));
+
+    if (!text || !text.trim()) {
+      throw new Error("Empty response body (0 chars)");
+    }
+    if (text.trim().startsWith("<")) {
+      throw new Error("Got HTML, not CSV (likely a sign-in/redirect page)");
+    }
+
     const wb = XLSX.read(text, {type:"string"});
     const ws = wb.Sheets[wb.SheetNames[0]];
     const json = XLSX.utils.sheet_to_json(ws, {defval:""});
-    if (!json.length) throw new Error("Sheet appears empty");
+    if (!json.length) {
+      throw new Error("Parsed 0 rows from " + text.length + " chars — check header row");
+    }
     allRows = json.map(r => ({
       order:         shortOrderId(r["Shipment ID"]||r["shipment id"]||""),
       company:       r["Company"]||r["company"]||"",
